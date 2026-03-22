@@ -6,9 +6,7 @@ const Connection = (() => {
   const handlers = {};
 
   function connect() {
-    // PythonAnywhere: no WebSocket, use polling. Local: try both.
-    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    socket = io({ transports: isLocal ? ['websocket', 'polling'] : ['polling'] });
+    socket = io({ transports: ['websocket', 'polling'] });
     socket.on('connect', () => { console.log('[WS] Connected:', socket.id); _fire('connected'); });
     socket.on('disconnect', () => { console.log('[WS] Disconnected'); _fire('disconnected'); });
     socket.on('game_state', data => _fire('game_state', data));

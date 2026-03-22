@@ -8,7 +8,7 @@ Deploy: use wsgi.py for PythonAnywhere
 import os
 import time
 import threading
-from flask import Flask, render_template
+from flask import Flask, render_template, request as flask_request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 from game.engine import GameEngine, Phase
@@ -17,13 +17,20 @@ from game.room import Room, RoomManager
 from game.logger import dump_game_log
 
 import mimetypes
+mimetypes.init()
 mimetypes.add_type('application/javascript', '.js')
 mimetypes.add_type('text/css', '.css')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'napoleon-secret')
 
-async_mode = 'threading'
+# Use eventlet for production (Render), threading for local dev
+try:
+    import eventlet
+    eventlet.monkey_patch()
+    async_mode = 'eventlet'
+except ImportError:
+    async_mode = 'threading'
 
 socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins='*')
 
@@ -42,6 +49,15 @@ _game_logged = {}    # room_id -> bool
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.after_request
+def fix_mime_types(response):
+    if flask_request.path.endswith('.js') and 'javascript' not in response.content_type:
+        response.content_type = 'application/javascript'
+    elif flask_request.path.endswith('.css') and 'css' not in response.content_type:
+        response.content_type = 'text/css'
+    return response
 
 
 # ==================================================================
