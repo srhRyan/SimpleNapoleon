@@ -1117,7 +1117,7 @@ const Renderer = (() => {
       } else {
         html += `<p>Goal: hold Napoleon below <strong>${state.contract_points}</strong> pts (UN needs ${48 - state.contract_points + 1}+ pts).</p>`;
         const plan = [];
-        if (h.jokers.length) plan.push(`${h.jokers.length} joker(s): <strong>NEVER lead with jokers</strong>. Save as ambush — play when Napoleon/secretary is winning a trick with 2+ points`);
+        if (h.jokers.length) plan.push(`${h.jokers.length} joker(s): <strong>NEVER lead with jokers</strong>. Ambush when Napoleon wins a trick with 2+ points`);
         if (h.trump.cards.length >= 4) plan.push(`Wash trump: lead ${Ts} to deplete Napoleon's trump supply (${h.trump.cards.length} trumps available)`);
         else if (h.trump.cards.length >= 1) plan.push(`${h.trump.cards.length} trump(s): save for cutting Napoleon's side-suit leads`);
         if (h.sideAces.length) plan.push(`Lead side Aces (${h.sideAces.map(_cardLabel).join(', ')}) to grab points for UN`);
@@ -1290,7 +1290,8 @@ const Renderer = (() => {
           else parts.push('— discarding non-point, correct');
         }
       } else if (card.is_joker) {
-        if (ptsBefore >= 2) parts.push(`Joker ambush on ${ptsBefore}pts — excellent timing`);
+        if (trick.round === 25) parts.push(`<span style="color:var(--clr-danger)">Joker in R25 — VOID! Wasted card, should have used earlier</span>`);
+        else if (ptsBefore >= 2) parts.push(`Joker ambush on ${ptsBefore}pts — excellent timing`);
         else if (ptsBefore >= 1) parts.push(`Joker used for ${ptsBefore}pt — acceptable`);
         else parts.push(`Joker on 0pts — wasteful, better saved for high-value trick`);
       } else if (isSec) {

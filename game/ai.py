@@ -305,8 +305,13 @@ class AI:
                     if not c.is_joker and c.suit == e.trump_suit and c.rank == rank:
                         return c.id
 
-        side_aces = [c for c in playable if not c.is_joker and c.suit != e.trump_suit and c.rank == 'A']
+        # Late game: use jokers NOW before they become void in round 25
         jokers = [c for c in playable if c.is_joker]
+        if jokers and e.current_round >= 22:
+            jokers.sort(key=lambda c: c.joker_priority)
+            return jokers[0].id
+
+        side_aces = [c for c in playable if not c.is_joker and c.suit != e.trump_suit and c.rank == 'A']
         trump_high = [c for c in playable if not c.is_joker and c.suit == e.trump_suit and c.rank in ('A', 'K')]
         side_kings = [c for c in playable if not c.is_joker and c.suit != e.trump_suit and c.rank == 'K']
         trump_other = [c for c in playable if not c.is_joker and c.suit == e.trump_suit and c.rank not in ('A', 'K')]
@@ -503,7 +508,16 @@ class AI:
         winner_is_enemy = (winner.role == Role.NAPOLEON or
                           (winner.role == Role.SECRETARY and e.secretary_revealed))
 
-        # Debug: log when joker would be played
+        # Late game: use jokers before round 25 (they become void)
+        if e.current_round >= 23 and winner_is_enemy:
+            jokers = [c for c in playable if c.is_joker]
+            if jokers and trick_points >= 1:
+                best_prio = max(e._card_priority(c, i) for i, (_, c) in enumerate(e.current_trick))
+                winning = [j for j in jokers if e._card_priority(j, len(e.current_trick)) > best_prio]
+                if winning:
+                    winning.sort(key=lambda c: c.joker_priority)
+                    return winning[0].id
+
         ally_winning = not winner_is_enemy
         if ally_winning:
             print(f'[AI-DEBUG] R{e.current_round} P{player.index} follow_un: ally P{winner_idx}({winner.role.value}) winning, trick_pts={trick_points}')
@@ -604,6 +618,16 @@ class AI:
         winner_idx = self._current_trick_winner()
         winner = e.players[winner_idx]
         trick_points = sum(1 for _, c in e.current_trick if c.is_point)
+
+        # Late game: use jokers before round 25 (they become void)
+        if e.current_round >= 23:
+            jokers = [c for c in playable if c.is_joker]
+            if jokers and trick_points >= 1:
+                best_prio = max(e._card_priority(c, i) for i, (_, c) in enumerate(e.current_trick))
+                winning = [j for j in jokers if e._card_priority(j, len(e.current_trick)) > best_prio]
+                if winning:
+                    winning.sort(key=lambda c: c.joker_priority)
+                    return winning[0].id
 
         my_role = player.role
         winner_is_ally = False
