@@ -362,6 +362,13 @@
     Renderer.updateSeats(state);
     Renderer.updateTrickArea(state);
 
+    // Fold table on mobile during non-playing phases
+    const table = document.getElementById('game-table');
+    const foldPhases = ['bidding', 'choose_trump', 'swap_cards', 'choose_secretary', 'announce'];
+    if (table) {
+      table.classList.toggle('table-folded', foldPhases.includes(state.phase));
+    }
+
     prevPhase = state.phase;
 
     switch (state.phase) {

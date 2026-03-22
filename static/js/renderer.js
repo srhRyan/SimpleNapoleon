@@ -222,6 +222,28 @@ const Renderer = (() => {
     return html;
   }
 
+  let _selectedSuitTab = null;
+
+  function _isMobile() {
+    return window.innerWidth <= 768;
+  }
+
+  function _autoSelectSuit(state) {
+    const hand = state.hand || [];
+    const trump = state.trump_suit;
+    const lead = state.lead_suit;
+    const hasSuit = (s) => hand.some(c => s === 'joker' ? c.is_joker : (!c.is_joker && c.suit === s));
+
+    // Priority: lead suit > trump > first available
+    if (lead && hasSuit(lead)) return lead;
+    if (trump && hasSuit(trump)) return trump;
+    for (const s of ['spades','hearts','diamonds','clubs']) {
+      if (hasSuit(s)) return s;
+    }
+    if (hasSuit('joker')) return 'joker';
+    return null;
+  }
+
   function renderHand(state, onCardClick) {
     const container = $('#hand-cards');
     container.innerHTML = '';
@@ -229,11 +251,33 @@ const Renderer = (() => {
     const playable = new Set(state.playable_ids || []);
     const isMyTurn = state.phase === 'playing' && state.current_player_idx === state.my_index;
     const sorted = sortCards(state.hand, state.trump_suit);
+    const mobile = _isMobile();
 
-    // Stats bar
-    if (statsEl) statsEl.innerHTML = _buildHandStats(state.hand, state.trump_suit);
+    // Stats bar — also serves as suit tabs on mobile
+    if (statsEl) {
+      if (mobile && state.phase === 'playing') {
+        statsEl.innerHTML = _buildSuitTabs(state);
+      } else {
+        statsEl.innerHTML = _buildHandStats(state.hand, state.trump_suit);
+      }
+    }
+
+    // Auto-select suit on mobile
+    if (mobile && state.phase === 'playing') {
+      if (!_selectedSuitTab || !state.hand.some(c =>
+        _selectedSuitTab === 'joker' ? c.is_joker : (!c.is_joker && c.suit === _selectedSuitTab)
+      )) {
+        _selectedSuitTab = _autoSelectSuit(state);
+      }
+    }
 
     sorted.forEach(card => {
+      // On mobile during play, filter by selected suit tab
+      if (mobile && state.phase === 'playing' && _selectedSuitTab) {
+        const cardSuit = card.is_joker ? 'joker' : card.suit;
+        if (cardSuit !== _selectedSuitTab) return;
+      }
+
       const canPlay = isMyTurn && playable.has(card.id);
       let attrs = canPlay ? 'data-playable="true"' : '';
       if (_showSecretaryHighlight(card, state)) attrs += ' data-secretary="true"';
@@ -245,6 +289,50 @@ const Renderer = (() => {
       }
       container.appendChild(cardEl);
     });
+
+    // Bind suit tab clicks
+    if (mobile && state.phase === 'playing') {
+      $$('.suit-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          _selectedSuitTab = btn.dataset.suit;
+          renderHand(state, onCardClick);
+        });
+      });
+    }
+  }
+
+  function _buildSuitTabs(state) {
+    const hand = state.hand || [];
+    const trump = state.trump_suit;
+    const pointRanks = new Set(['J','Q','K','A']);
+    const suits = {};
+    let jokerCount = 0;
+    hand.forEach(c => {
+      if (c.is_joker) { jokerCount++; return; }
+      if (!suits[c.suit]) suits[c.suit] = { count: 0, pts: 0 };
+      suits[c.suit].count++;
+      if (pointRanks.has(c.rank)) suits[c.suit].pts++;
+    });
+
+    const order = [trump, ...['spades','hearts','diamonds','clubs'].filter(s => s !== trump)];
+    let html = '';
+
+    if (jokerCount > 0) {
+      const sel = _selectedSuitTab === 'joker' ? ' suit-tab-active' : '';
+      html += `<button class="suit-tab-btn${sel}" data-suit="joker"><span class="suit-icon" data-suit="joker">🃏</span>${jokerCount}</button>`;
+    }
+    for (const suit of order) {
+      const s = suits[suit];
+      if (!s) continue;
+      const sel = _selectedSuitTab === suit ? ' suit-tab-active' : '';
+      const isTrump = suit === trump;
+      html += `<button class="suit-tab-btn${sel}${isTrump ? ' is-trump' : ''}" data-suit="${suit}">`;
+      html += `<span class="suit-icon" data-suit="${suit}">${SUIT_SYM[suit]}</span>`;
+      html += `${s.count}`;
+      if (s.pts > 0) html += `<span class="stat-pts">(${s.pts})</span>`;
+      html += `</button>`;
+    }
+    return html;
   }
 
   // ================================================================
