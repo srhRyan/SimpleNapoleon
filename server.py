@@ -280,12 +280,30 @@ def on_disconnect():
             start_ai_driver(room)
             def _expire_host():
                 _sleep(60)
-                if slot.type == 'disconnected':
-                    # Host didn't reconnect — close room
+                if slot.type != 'disconnected':
+                    return  # reconnected in time
+                # Replace host with AI
+                slot.set_ai(level=3, strategy='conservative')
+                room.engine.players[0].is_ai = True
+                room.engine.players[0].name = 'AI-0'
+                # Find next human to promote as host
+                new_host = None
+                for s in room.slots:
+                    if s.type == 'human' and s.sid:
+                        new_host = s
+                        break
+                if new_host:
+                    room.host_sid = new_host.sid
                     for s in room.slots:
                         if s.type == 'human' and s.sid:
-                            socketio.emit('room_closed', {'msg': 'Host disconnected — room closed'}, to=s.sid)
-                            room_mgr.sid_to_room.pop(s.sid, None)
+                            socketio.emit('host_changed', {
+                                'old_host': slot.original_name,
+                                'new_host': new_host.name,
+                                'new_host_index': new_host.index,
+                            }, to=s.sid)
+                    broadcast_game_state(room)
+                else:
+                    # No humans left — close room
                     if rid in room_mgr.rooms:
                         del room_mgr.rooms[rid]
             socketio.start_background_task(_expire_host)

@@ -217,6 +217,10 @@
     Connection.on('rejoin_success', data => {
       Animations.showCenterMessage('Reconnected!', 1500);
     });
+    Connection.on('host_changed', data => {
+      Animations.showCenterMessage(`${data.old_host} timed out. ${data.new_host} is new host.`, 3000);
+      isHost = (currentState && currentState.my_index === data.new_host_index);
+    });
     Connection.on('disconnected', () => {
       // Try to auto-rejoin on reconnect
       if (currentRoomId && currentMode !== 'single') {

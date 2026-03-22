@@ -28,6 +28,7 @@ const Connection = (() => {
     socket.on('player_replaced', data => _fire('player_replaced', data));
     socket.on('player_reconnected', data => _fire('player_reconnected', data));
     socket.on('rejoin_success', data => _fire('rejoin_success', data));
+    socket.on('host_changed', data => _fire('host_changed', data));
   }
 
   function emit(event, data) { if (socket) socket.emit(event, data); }
