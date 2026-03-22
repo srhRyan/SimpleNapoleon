@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Napoleon Card Game</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- ============================================================ -->
+  <!-- Start Screen -->
+  <!-- ============================================================ -->
+  <div id="start-screen" class="screen active">
+    <div class="start-container">
+      <h1 class="game-title">Napoleon</h1>
+      <p class="game-subtitle">文山教會版</p>
+      <div class="start-form">
+        <label>
+          <span>Your Name</span>
+          <input id="player-name" type="text" value="Player" maxlength="12">
+        </label>
+
+        <!-- Mode selection -->
+        <div style="display:flex;gap:0.5em;margin:1em 0;justify-content:center">
+          <button id="btn-single" class="btn btn-primary">Single Player</button>
+          <button id="btn-host" class="btn btn-success">Host Room</button>
+          <button id="btn-join" class="btn btn-primary">Join Room</button>
+        </div>
+
+        <div id="single-options" style="display:none">
+          <label>
+            <span>AI Strategy</span>
+            <select id="ai-strategy">
+              <option value="aggressive">Aggressive</option>
+              <option value="conservative" selected>Conservative</option>
+              <option value="tactical">Tactical</option>
+              <option value="deceptive">Deceptive</option>
+            </select>
+          </label>
+          <label>
+            <span>AI Proficiency</span>
+            <select id="ai-level">
+              <option value="1">Beginner (25% mistakes)</option>
+              <option value="2">Competent (10% mistakes)</option>
+              <option value="3" selected>Expert (perfect execution)</option>
+            </select>
+          </label>
+          <button id="btn-start" class="btn btn-primary" style="margin-top:0.5em">Start Game</button>
+          <div style="margin-top:1em;padding-top:1em;border-top:1px solid #555">
+            <label style="cursor:pointer">
+              <span style="font-size:0.85rem;color:#aaa">Import saved deal:</span>
+              <input id="import-deal" type="file" accept=".json" style="display:block;margin-top:0.3em;font-size:0.85rem;color:#ccc">
+            </label>
+            <button id="btn-import" class="btn btn-success btn-small" style="margin-top:0.5em" disabled>Start with Imported Deal</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Join Screen -->
+  <!-- ============================================================ -->
+  <div id="join-screen" class="screen">
+    <div class="start-container" style="max-width:600px">
+      <h2 style="color:var(--clr-gold);text-align:center">Join Room</h2>
+
+      <!-- Direct join -->
+      <div style="display:flex;gap:0.5em;align-items:flex-end;justify-content:center;margin:1em 0">
+        <label style="margin:0">
+          <span style="font-size:0.85rem;color:#aaa">Room Code</span>
+          <input id="room-code" type="text" maxlength="6" placeholder="6-digit" style="text-align:center;font-size:1.2rem;letter-spacing:0.3em;width:140px">
+        </label>
+        <button id="btn-join-room" class="btn btn-primary">Join</button>
+      </div>
+
+      <!-- Public rooms -->
+      <h3 style="color:#ccc;margin-top:1.5em;border-top:1px solid #555;padding-top:1em">Public Rooms</h3>
+      <div id="public-rooms-list" style="margin:0.5em 0"></div>
+      <div id="public-rooms-pager" style="text-align:center;margin-top:0.5em"></div>
+
+      <div style="text-align:center;margin-top:1.5em">
+        <button id="btn-back-start" class="btn btn-danger btn-small">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Room Lobby Screen -->
+  <!-- ============================================================ -->
+  <div id="room-screen" class="screen">
+    <div class="start-container" style="max-width:600px">
+      <h2 style="color:var(--clr-gold);text-align:center">Room: <span id="room-code-display"></span></h2>
+      <div id="room-slots" style="margin:1em 0"></div>
+      <div id="room-actions" style="text-align:center;margin-top:1em"></div>
+      <div style="text-align:center;margin-top:1em">
+        <button id="btn-leave-room" class="btn btn-danger btn-small">Leave Room</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Game Screen -->
+  <!-- ============================================================ -->
+  <div id="game-screen" class="screen">
+    <!-- Info Bar -->
+    <div id="info-bar" class="info-bar">
+      <div class="info-item" id="info-round">Round: -</div>
+      <div class="info-item" id="info-trump">Trump: -</div>
+      <div class="info-item" id="info-contract">Contract: -</div>
+      <div class="info-item" id="info-nap-pts">Napoleon: 0</div>
+      <div class="info-item" id="info-un-pts">UN: 0</div>
+      <div class="info-item" id="info-phase">Phase: -</div>
+      <button class="btn btn-danger btn-small" id="btn-auto-play">AI Autopilot: OFF</button>
+      <button class="btn btn-primary btn-small" id="btn-skip" style="display:none">Skip to End</button>
+    </div>
+
+    <!-- Game Table -->
+    <div id="game-table" class="game-table">
+      <div class="seat seat-0" data-seat="0"><div class="seat-name"></div><div class="seat-info"></div><div class="seat-card-count"></div></div>
+      <div class="seat seat-1" data-seat="1"><div class="seat-name"></div><div class="seat-info"></div><div class="seat-card-count"></div></div>
+      <div class="seat seat-2" data-seat="2"><div class="seat-name"></div><div class="seat-info"></div><div class="seat-card-count"></div></div>
+      <div class="seat seat-3" data-seat="3"><div class="seat-name"></div><div class="seat-info"></div><div class="seat-card-count"></div></div>
+      <div class="seat seat-4" data-seat="4"><div class="seat-name"></div><div class="seat-info"></div><div class="seat-card-count"></div></div>
+      <div class="seat seat-5" data-seat="5"><div class="seat-name"></div><div class="seat-info"></div><div class="seat-card-count"></div></div>
+      <div id="trick-area" class="trick-area">
+        <div class="trick-card" data-trick-seat="0"></div>
+        <div class="trick-card" data-trick-seat="1"></div>
+        <div class="trick-card" data-trick-seat="2"></div>
+        <div class="trick-card" data-trick-seat="3"></div>
+        <div class="trick-card" data-trick-seat="4"></div>
+        <div class="trick-card" data-trick-seat="5"></div>
+      </div>
+      <div id="center-msg" class="center-msg"></div>
+    </div>
+
+    <!-- Player Hand -->
+    <div id="hand-area" class="hand-area">
+      <div id="hand-stats" class="hand-stats"></div>
+      <div id="hand-cards" class="hand-cards"></div>
+    </div>
+    <div id="action-bar" class="action-bar"></div>
+  </div>
+
+  <!-- Overlays -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div id="modal-content" class="modal-content"></div>
+  </div>
+  <div id="gameover-overlay" class="gameover-overlay">
+    <div id="gameover-content" class="gameover-content"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/static/js/animations.js"></script>
+  <script src="/static/js/connection.js"></script>
+  <script src="/static/js/renderer.js"></script>
+  <script src="/static/js/main.js"></script>
+</body>
+</html>

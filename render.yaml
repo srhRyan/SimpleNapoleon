@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: napoleon-card-game
+    runtime: python
+    buildCommand: pip install -r requirements.txt && mkdir -p logs
+    startCommand: python server.py
+    envVars:
+      - key: DEBUG
+        value: false
+      - key: SECRET_KEY
+        generateValue: true
