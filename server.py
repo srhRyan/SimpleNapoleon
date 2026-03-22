@@ -16,6 +16,10 @@ from game.ai import AI
 from game.room import Room, RoomManager
 from game.logger import dump_game_log
 
+import mimetypes
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('text/css', '.css')
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'napoleon-secret')
 
