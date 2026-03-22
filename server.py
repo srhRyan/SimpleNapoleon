@@ -24,13 +24,7 @@ mimetypes.add_type('text/css', '.css')
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'napoleon-secret')
 
-# Use eventlet for production (Render), threading for local dev
-try:
-    import eventlet
-    eventlet.monkey_patch()
-    async_mode = 'eventlet'
-except ImportError:
-    async_mode = 'threading'
+async_mode = 'threading'
 
 socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins='*')
 
