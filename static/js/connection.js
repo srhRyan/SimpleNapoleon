@@ -24,6 +24,10 @@ const Connection = (() => {
     socket.on('skip_vote_status', data => _fire('skip_vote_status', data));
     socket.on('room_closed', data => _fire('room_closed', data));
     socket.on('public_rooms', data => _fire('public_rooms', data));
+    socket.on('player_disconnected', data => _fire('player_disconnected', data));
+    socket.on('player_replaced', data => _fire('player_replaced', data));
+    socket.on('player_reconnected', data => _fire('player_reconnected', data));
+    socket.on('rejoin_success', data => _fire('rejoin_success', data));
   }
 
   function emit(event, data) { if (socket) socket.emit(event, data); }

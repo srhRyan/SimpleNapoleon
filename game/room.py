@@ -20,12 +20,14 @@ from .ai import AI
 class Slot:
     def __init__(self, index: int):
         self.index = index
-        self.type = 'empty'       # 'empty', 'human', 'ai'
+        self.type = 'empty'       # 'empty', 'human', 'ai', 'disconnected'
         self.name = ''
         self.sid = ''             # socket ID for human
         self.ai_level = 3
         self.ai_strategy = 'conservative'
         self.ready = False
+        self.disconnect_time = 0  # timestamp when disconnected
+        self.original_name = ''   # name before disconnect
 
     def set_human(self, name: str, sid: str):
         self.type = 'human'
@@ -41,11 +43,29 @@ class Slot:
         self.ai_strategy = strategy
         self.ready = True
 
+    def mark_disconnected(self):
+        """Mark human as disconnected — AI takes over temporarily."""
+        import time
+        self.original_name = self.name
+        self.disconnect_time = time.time()
+        self.type = 'disconnected'
+        self.sid = ''
+
+    def reconnect(self, sid: str):
+        """Restore disconnected player."""
+        self.type = 'human'
+        self.name = self.original_name
+        self.sid = sid
+        self.ready = True
+        self.disconnect_time = 0
+
     def vacate(self):
         self.type = 'empty'
         self.name = ''
         self.sid = ''
         self.ready = False
+        self.disconnect_time = 0
+        self.original_name = ''
 
     def to_dict(self):
         return {
@@ -116,7 +136,13 @@ class Room:
         return -1
 
     def is_ai_player(self, player_idx: int) -> bool:
-        return self.slots[player_idx].type == 'ai'
+        return self.slots[player_idx].type in ('ai', 'disconnected')
+
+    def find_disconnected_by_name(self, name: str) -> Slot | None:
+        for s in self.slots:
+            if s.type == 'disconnected' and s.original_name == name:
+                return s
+        return None
 
     def start_game(self):
         """Initialize game engine from slot configuration."""

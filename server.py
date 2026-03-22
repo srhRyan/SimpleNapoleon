@@ -267,35 +267,118 @@ def on_disconnect():
         return
     rid = room.room_id
     if sid == room.host_sid:
-        # Host disconnected — close room, notify all players
-        for s in room.slots:
-            if s.type == 'human' and s.sid and s.sid != sid:
-                socketio.emit('room_closed', {'msg': 'Host disconnected — room closed'}, to=s.sid)
-                room_mgr.sid_to_room.pop(s.sid, None)
-        was_public = room.public
-        room_mgr.sid_to_room.pop(sid, None)
-        if rid in room_mgr.rooms:
-            del room_mgr.rooms[rid]
-        if was_public:
-            broadcast_public_rooms()
-    else:
-        # Player disconnected — release their slot
-        slot = room.find_slot_by_sid(sid)
-        if slot:
-            slot.vacate()
-        room_mgr.sid_to_room.pop(sid, None)
-        # If game is in progress, replace with AI
-        if room.state == 'playing' and slot:
-            slot.set_ai(level=3, strategy='conservative')
-            room.engine.players[slot.index].is_ai = True
-            room.engine.players[slot.index].name = f'AI-{slot.index}'
+        if room.state == 'playing':
+            # During game: same 60s grace period for host too
+            slot = room.slots[0]
+            slot.mark_disconnected()
+            room_mgr.sid_to_room.pop(sid, None)
+            for s in room.slots:
+                if s.type == 'human' and s.sid:
+                    socketio.emit('player_disconnected', {
+                        'index': 0, 'name': slot.original_name, 'timeout': 60,
+                    }, to=s.sid)
             start_ai_driver(room)
-        send_room_state(room)
+            def _expire_host():
+                _sleep(60)
+                if slot.type == 'disconnected':
+                    # Host didn't reconnect — close room
+                    for s in room.slots:
+                        if s.type == 'human' and s.sid:
+                            socketio.emit('room_closed', {'msg': 'Host disconnected — room closed'}, to=s.sid)
+                            room_mgr.sid_to_room.pop(s.sid, None)
+                    if rid in room_mgr.rooms:
+                        del room_mgr.rooms[rid]
+            socketio.start_background_task(_expire_host)
+        else:
+            # Waiting room: close immediately
+            for s in room.slots:
+                if s.type == 'human' and s.sid and s.sid != sid:
+                    socketio.emit('room_closed', {'msg': 'Host disconnected — room closed'}, to=s.sid)
+                    room_mgr.sid_to_room.pop(s.sid, None)
+            was_public = room.public
+            room_mgr.sid_to_room.pop(sid, None)
+            if rid in room_mgr.rooms:
+                del room_mgr.rooms[rid]
+            if was_public:
+                broadcast_public_rooms()
+    else:
+        slot = room.find_slot_by_sid(sid)
+        room_mgr.sid_to_room.pop(sid, None)
+        if not slot:
+            return
+        if room.state == 'playing':
+            # During game: mark disconnected, AI takes over, allow 60s reconnect
+            slot.mark_disconnected()
+            # Notify others
+            for s in room.slots:
+                if s.type == 'human' and s.sid:
+                    socketio.emit('player_disconnected', {
+                        'index': slot.index,
+                        'name': slot.original_name,
+                        'timeout': 60,
+                    }, to=s.sid)
+            start_ai_driver(room)
+            # Schedule permanent replacement after 60s
+            def _expire_disconnect():
+                _sleep(60)
+                if slot.type == 'disconnected':
+                    slot.set_ai(level=3, strategy='conservative')
+                    room.engine.players[slot.index].is_ai = True
+                    room.engine.players[slot.index].name = f'AI-{slot.index}'
+                    for s in room.slots:
+                        if s.type == 'human' and s.sid:
+                            socketio.emit('player_replaced', {
+                                'index': slot.index,
+                                'name': slot.original_name,
+                            }, to=s.sid)
+                    broadcast_game_state(room)
+            socketio.start_background_task(_expire_disconnect)
+        else:
+            # Waiting room: just vacate
+            slot.vacate()
+            send_room_state(room)
 
 
 # ==================================================================
 # Socket.IO: Room management
 # ==================================================================
+@socketio.on('rejoin_room')
+def on_rejoin_room(data=None):
+    """Reconnect to a room after disconnect."""
+    if not data:
+        return
+    from flask import request
+    sid = request.sid
+    room_id = data.get('room_id', '')
+    name = data.get('name', '')
+    room = room_mgr.rooms.get(room_id)
+    if not room:
+        emit('join_error', {'msg': 'Room no longer exists'})
+        return
+    slot = room.find_disconnected_by_name(name)
+    if not slot:
+        emit('join_error', {'msg': 'No disconnected slot for this player'})
+        return
+    # Restore player
+    slot.reconnect(sid)
+    room.engine.players[slot.index].is_ai = False
+    room.engine.players[slot.index].name = name
+    room_mgr.sid_to_room[sid] = room_id
+    # If host reconnecting, restore host_sid
+    if slot.index == 0:
+        room.host_sid = sid
+    join_room(room_id)
+    emit('room_joined', {'room_id': room_id})
+    emit('rejoin_success', {'index': slot.index})
+    broadcast_game_state(room)
+    # Notify others
+    for s in room.slots:
+        if s.type == 'human' and s.sid and s.sid != sid:
+            socketio.emit('player_reconnected', {
+                'index': slot.index, 'name': name,
+            }, to=s.sid)
+
+
 @socketio.on('create_room')
 def on_create_room(data=None):
     name = data.get('name', 'Host') if data else 'Host'

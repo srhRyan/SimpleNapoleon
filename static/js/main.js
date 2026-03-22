@@ -205,6 +205,27 @@
       alert(data.msg);
     });
     Connection.on('public_rooms', renderPublicRooms);
+    Connection.on('player_disconnected', data => {
+      Animations.showCenterMessage(`${data.name} disconnected — AI playing (${data.timeout}s to reconnect)`, 3000);
+    });
+    Connection.on('player_replaced', data => {
+      Animations.showCenterMessage(`${data.name} replaced by AI (timeout)`, 2000);
+    });
+    Connection.on('player_reconnected', data => {
+      Animations.showCenterMessage(`${data.name} reconnected!`, 2000);
+    });
+    Connection.on('rejoin_success', data => {
+      Animations.showCenterMessage('Reconnected!', 1500);
+    });
+    Connection.on('disconnected', () => {
+      // Try to auto-rejoin on reconnect
+      if (currentRoomId && currentMode !== 'single') {
+        const name = document.getElementById('player-name')?.value?.trim() || 'Player';
+        setTimeout(() => {
+          Connection.emit('rejoin_room', { room_id: currentRoomId, name });
+        }, 1000);
+      }
+    });
     Connection.on('room_closed', data => {
       alert(data.msg);
       Renderer.hideModal();
