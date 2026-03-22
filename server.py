@@ -493,10 +493,12 @@ def on_start_game(data=None):
         room_mgr.leave_room(sid)
 
     room = room_mgr.create_room(sid, name)
-    room.slots[0].ai_level = ai_levels[0]
-    room.slots[0].ai_strategy = ai_strategies[0]
+    room.slots[0].ai_level = ai_levels[0] if ai_levels else 3
+    room.slots[0].ai_strategy = ai_strategies[0] if ai_strategies else 'conservative'
     for i in range(1, 6):
-        room.slots[i].set_ai(level=ai_levels[i], strategy=ai_strategies[i])
+        lvl = ai_levels[i] if i < len(ai_levels) else ai_levels[-1] if ai_levels else 3
+        strat = ai_strategies[i] if i < len(ai_strategies) else ai_strategies[-1] if ai_strategies else 'conservative'
+        room.slots[i].set_ai(level=lvl, strategy=strat)
     join_room(room.room_id)
 
     _game_logged[room.room_id] = False

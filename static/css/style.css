@@ -418,7 +418,8 @@ body {
   min-height: 50px;
   flex-wrap: wrap;
   align-items: center;
-  z-index: 10;
+  position: relative;
+  z-index: 20;
 }
 .action-bar:empty { display: none; }
 
