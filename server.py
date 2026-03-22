@@ -514,9 +514,12 @@ def on_start_game(data=None):
 def on_bid(data=None):
     from flask import request
     room = get_room(request.sid)
+    print(f'[BID] sid={request.sid} room={room is not None} data={data}')
     if not room or room.engine.phase != Phase.BIDDING:
+        print(f'[BID] rejected: no room or wrong phase')
         return
     pidx = room.player_index_for_sid(request.sid)
+    print(f'[BID] pidx={pidx} current_bidder={room.engine.current_bidder_idx}')
     if pidx < 0 or room.engine.current_bidder_idx != pidx:
         emit('error', {'msg': 'not_your_turn'})
         return

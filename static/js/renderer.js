@@ -278,10 +278,14 @@ const Renderer = (() => {
       </div>
     `);
     $('#btn-bid').addEventListener('click', () => {
+      console.log('[BID] Bid button clicked');
       const val = parseInt($('#bid-input').value, 10);
       if (val >= minBid && val <= 48) onBid(val);
     });
-    $('#btn-pass').addEventListener('click', () => onBid(0));
+    $('#btn-pass').addEventListener('click', () => {
+      console.log('[BID] Pass button clicked');
+      onBid(0);
+    });
   }
 
   function renderBidHistory(state) {

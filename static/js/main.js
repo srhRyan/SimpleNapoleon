@@ -164,6 +164,16 @@
       console.warn('[Error]', data.msg);
       Animations.showCenterMessage(data.msg, 2000);
     });
+    Connection.on('disconnected', () => {
+      console.warn('[Main] Disconnected — will auto-reconnect');
+    });
+    Connection.on('connected', () => {
+      console.log('[Main] Connected');
+      // Re-join room on reconnect if we were in a game
+      if (currentRoomId && currentMode === 'single') {
+        console.log('[Main] Reconnected — re-starting single game');
+      }
+    });
     Connection.on('deal_data', data => {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
